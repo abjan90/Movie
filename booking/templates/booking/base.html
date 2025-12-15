@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}QFX Cinemas{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f1419;
+            color: #fff;
+        }
+        
+        /* Navbar */
+        .navbar {
+            background: #1a1f26;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #00bcd4;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: #b0b3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #00bcd4;
+        }
+        
+        .nav-auth {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.6rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #00bcd4;
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: #00a5bb;
+            transform: translateY(-2px);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #00bcd4;
+            border: 2px solid #00bcd4;
+        }
+        
+        .btn-outline:hover {
+            background: #00bcd4;
+            color: #fff;
+        }
+        
+        /* Messages */
+        .messages {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        
+        .alert {
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .alert-success {
+            background: #4caf50;
+            color: #fff;
+        }
+        
+        .alert-error {
+            background: #f44336;
+            color: #fff;
+        }
+        
+        .alert-info {
+            background: #2196f3;
+            color: #fff;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Footer */
+        .footer {
+            background: #1a1f26;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 4rem;
+            color: #b0b3b8;
+        }
+        
+        
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="logo">
+            🎬 QFX Cinemas
+        </div>
+        <ul class="nav-links">
+            <li><a href="{% url 'home' %}">HOME</a></li>
+            <li><a href="{% url 'movies' %}">MOVIES</a></li>
+            <li><a href="#">OFFERS</a></li>
+            <li><a href="#">SCHEDULES</a></li>
+            {% if user.is_authenticated %}
+            <li><a href="{% url 'my_bookings' %}">MY BOOKINGS</a></li>
+            {% endif %}
+        </ul>
+        <div class="nav-auth">
+            {% if user.is_authenticated %}
+                <span style="color: #b0b3b8; padding: 0.6rem;">Hi, {{ user.first_name|default:user.username }}</span>
+                <a href="{% url 'logout' %}" class="btn btn-outline">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline">Sign In</a>
+            {% endif %}
+        </div>
+    </nav>
+    
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 QFX Cinemas. All rights reserved.</p>
+    </footer>
+    
+    {% block extra_js %}{% endblock %}
+    
+    <script>
+        // Auto-hide messages after 5 seconds
+        setTimeout(() => {
+            const messages = document.querySelector('.messages');
+            if (messages) {
+                messages.style.opacity = '0';
+                messages.style.transition = 'opacity 0.5s';
+                setTimeout(() => messages.remove(), 500);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

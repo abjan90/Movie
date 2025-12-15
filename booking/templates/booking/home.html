@@ -1,0 +1,207 @@
+{% extends 'booking/base.html' %}
+
+{% block extra_css %}
+<style>
+    .hero {
+        height: 70vh;
+        background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(0,188,212,0.1)"/></svg>');
+        opacity: 0.1;
+    }
+    
+    .hero-content {
+        z-index: 1;
+        max-width: 800px;
+        padding: 2rem;
+    }
+    
+    .hero h1 {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #00bcd4 0%, #00e5ff 100%);
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .hero p {
+        font-size: 1.3rem;
+        color: #b0b3b8;
+        margin-bottom: 2rem;
+    }
+    
+    .section {
+        padding: 3rem 0;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+        color: #00bcd4;
+    }
+    
+    .movies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+    
+    .movie-card {
+        background: #1a1f26;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+    }
+    
+    .movie-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 40px rgba(0,188,212,0.3);
+    }
+    
+    .movie-poster {
+        width: 100%;
+        height: 350px;
+        background: #2c3138;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .movie-poster img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .movie-rating {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #00bcd4;
+        padding: 0.3rem 0.8rem;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .movie-info {
+        padding: 1.5rem;
+    }
+    
+    .movie-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .movie-meta {
+        color: #b0b3b8;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+    
+    .btn-book {
+        width: 100%;
+        background: #00bcd4;
+        color: #fff;
+        padding: 0.8rem;
+        border: none;
+        border-radius: 5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .btn-book:hover {
+        background: #00a5bb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <h1>Welcome to QFX Cinemas</h1>
+        <p>Book your movie tickets online and enjoy the best cinema experience</p>
+        <a href="{% url 'movies' %}" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2.5rem;">Browse Movies</a>
+    </div>
+</section>
+
+<!-- Now Showing Section -->
+<div class="container">
+    <section class="section">
+        <h2 class="section-title">🎬 NOW SHOWING</h2>
+        <div class="movies-grid">
+            {% for movie in now_showing %}
+            <<div class="movie-card" onclick='window.location.href="{% url "movie_detail" movie.id %}"'>
+                <div class="movie-poster">
+                    {% if movie.poster %}
+                        <img src="{{ movie.poster.url }}" alt="{{ movie.title }}">
+                    {% else %}
+                        <span style="font-size: 3rem;">🎬</span>
+                    {% endif %}
+                    <div class="movie-rating">{{ movie.rating }}</div>
+                </div>
+                <div class="movie-info">
+                    <div class="movie-title">{{ movie.title }}</div>
+                    <div class="movie-meta">
+                        {{ movie.language }} | {{ movie.genre }}
+                    </div>
+                    <button class="btn-book">Book Now</button>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color: #b0b3b8;">No movies currently showing.</p>
+            {% endfor %}
+        </div>
+    </section>
+    
+    <!-- Coming Soon Section -->
+    {% if coming_soon %}
+    <section class="section">
+        <h2 class="section-title">🔜 COMING SOON</h2>
+        <div class="movies-grid">
+            {% for movie in coming_soon %}
+            <div class="movie-card">
+                <div class="movie-poster">
+                    {% if movie.poster %}
+                        <img src="{{ movie.poster.url }}" alt="{{ movie.title }}">
+                    {% else %}
+                        <span style="font-size: 3rem;">🎬</span>
+                    {% endif %}
+                    <div class="movie-rating">{{ movie.rating }}</div>
+                </div>
+                <div class="movie-info">
+                    <div class="movie-title">{{ movie.title }}</div>
+                    <div class="movie-meta">
+                        {{ movie.language }} | {{ movie.genre }}
+                    </div>
+                    <div style="color: #00bcd4; font-weight: 600; margin-top: 0.5rem;">
+                        Releases: {{ movie.release_date|date:"M d, Y" }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

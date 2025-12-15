@@ -1,0 +1,184 @@
+{% extends 'booking/base.html' %}
+
+{% block title %}Sign In - QFX Cinemas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        padding: 2rem;
+    }
+    
+    .auth-box {
+        background: #1a1f26;
+        padding: 3rem;
+        border-radius: 10px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    
+    .auth-tabs {
+        display: flex;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #2c3138;
+    }
+    
+    .auth-tab {
+        flex: 1;
+        padding: 1rem;
+        text-align: center;
+        cursor: pointer;
+        color: #b0b3b8;
+        font-weight: 600;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s;
+    }
+    
+    .auth-tab.active {
+        color: #00bcd4;
+        border-bottom-color: #00bcd4;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #b0b3b8;
+        font-weight: 500;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.9rem;
+        background: #2c3138;
+        border: 2px solid #3a3f47;
+        border-radius: 5px;
+        color: #fff;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #00bcd4;
+    }
+    
+    .form-control::placeholder {
+        color: #6c757d;
+    }
+    
+    .password-field {
+        position: relative;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #b0b3b8;
+    }
+    
+    .btn-auth {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+        margin-top: 1rem;
+    }
+    
+    .auth-links {
+        margin-top: 1.5rem;
+        text-align: center;
+    }
+    
+    .auth-links a {
+        color: #00bcd4;
+        text-decoration: none;
+        display: block;
+        margin-top: 0.8rem;
+    }
+    
+    .auth-links a:hover {
+        text-decoration: underline;
+    }
+    
+    .errorlist {
+        list-style: none;
+        color: #f44336;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-box">
+        <div class="auth-tabs">
+            <div class="auth-tab active">SIGN IN</div>
+            <div class="auth-tab" data-href="{% url 'signup' %}">SIGN UP</div>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label>Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.email.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label>Password</label>
+                <div class="password-field">
+                    {{ form.password }}
+                    <span class="password-toggle" onclick="togglePassword(this)">👁️</span>
+                </div>
+                {% if form.password.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.password.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-auth">Sign In</button>
+            
+            <div class="auth-links">
+                <a href="#">Forgot Password?</a>
+                <a href="#">Login via OTP</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function togglePassword(icon) {
+        const input = icon.previousElementSibling;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.textContent = '👁️‍🗨️';
+        } else {
+            input.type = 'password';
+            icon.textContent = '👁️';
+        }
+    }
+</script>
+{% endblock %}
