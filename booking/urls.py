@@ -2,13 +2,26 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Home
     path('', views.home, name='home'),
+    
+    # Authentication
     path('signup/', views.signup_view, name='signup'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    
+    # Movies
     path('movies/', views.movies_list, name='movies'),
     path('movie/<int:movie_id>/', views.movie_detail, name='movie_detail'),
-    path('showtime/<int:showtime_id>/seats/', views.select_seats, name='select_seats'),
-    path('booking/<int:booking_id>/confirmation/', views.booking_confirmation, name='booking_confirmation'),
+    
+    # Booking
+    path('select-seats/<int:showtime_id>/', views.select_seats, name='select_seats'),
+    path('payment/<int:booking_id>/', views.payment_page, name='payment_page'),
+    path('process-payment/<int:booking_id>/', views.process_payment, name='process_payment'),
+    path('booking-confirmation/<int:booking_id>/', views.booking_confirmation, name='booking_confirmation'),
     path('my-bookings/', views.my_bookings, name='my_bookings'),
+    
+    # Cancellation - NEW ROUTES
+    path('request-cancellation/<int:booking_id>/', views.request_cancellation, name='request_cancellation'),
+    path('cancel-booking/<int:booking_id>/', views.cancel_booking, name='cancel_booking'),
 ]

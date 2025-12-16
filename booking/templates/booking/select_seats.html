@@ -1,6 +1,6 @@
 {% extends 'booking/base.html' %}
 
-{% block title %}Select Seats - QFX Cinemas{% endblock %}
+{% block title %}Select Seats - ASA Cinemas{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -17,6 +17,12 @@
         padding: 1.5rem;
         border-radius: 8px;
         margin-bottom: 2rem;
+        color: #fff;
+    }
+    
+    .booking-info h2 {
+        color: #fff;
+        margin-bottom: 0.5rem;
     }
     
     .screen {
@@ -68,6 +74,7 @@
         justify-content: center;
         font-size: 0.75rem;
         border: 2px solid transparent;
+        color: #b0b3b8;
     }
     
     .seat:hover:not(.booked) {
@@ -78,11 +85,13 @@
     .seat.selected {
         background: #00bcd4;
         border-color: #00e5ff;
+        color: #fff;
     }
     
     .seat.booked {
         background: #f44336;
         cursor: not-allowed;
+        color: #fff;
     }
     
     .legend {
@@ -99,6 +108,7 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        color: #b0b3b8;
     }
     
     .legend-box {
@@ -161,12 +171,15 @@
             <div class="seat-row">
                 <span class="row-label">{{ row.grouper }}</span>
                 {% for seat in row.list %}
-                <label>
-                    <input type="checkbox" name="seats" value="{{ seat.id }}" 
+                <label class="seat-label">
+                    <input type="checkbox" 
+                           name="seats" 
+                           value="{{ seat.id }}" 
+                           class="seat-checkbox"
                            style="display: none;" 
-                           {% if seat.id in booked_seats %}disabled{% endif %}
-                           onchange="updateSelection()">
+                           {% if seat.id in booked_seats %}disabled{% endif %}>
                     <div class="seat {% if seat.id in booked_seats %}booked{% endif %}" 
+                         data-seat-id="{{ seat.id }}"
                          data-price="{{ showtime.price }}">
                         {{ seat.number }}
                     </div>
@@ -201,7 +214,7 @@
         </div>
         <div class="summary-item">
             <div class="summary-label">Total Amount</div>
-            <div class="summary-value">Rs. <span id="totalAmount">0</span></div>
+            <div class="summary-value">Rs. <span id="totalAmount">0.00</span></div>
         </div>
     </div>
     <button type="button" class="btn btn-primary" onclick="confirmBooking()" 
@@ -213,15 +226,17 @@
 <script>
     function updateSelection() {
         const checkboxes = document.querySelectorAll('input[name="seats"]:checked');
-        const seats = document.querySelectorAll('.seat');
         
-        // Update seat styling
-        seats.forEach(seat => {
-            const checkbox = seat.previousElementSibling || seat.parentElement.querySelector('input');
-            if (checkbox && checkbox.checked) {
-                seat.classList.add('selected');
-            } else {
-                seat.classList.remove('selected');
+        // Update seat styling - remove all selected first
+        document.querySelectorAll('.seat').forEach(seat => {
+            seat.classList.remove('selected');
+        });
+        
+        // Add selected class to checked seats
+        checkboxes.forEach(checkbox => {
+            const seatDiv = checkbox.nextElementSibling;
+            if (seatDiv) {
+                seatDiv.classList.add('selected');
             }
         });
         
@@ -246,14 +261,20 @@
         form.submit();
     }
     
-    // Add click handler to seat divs
-    document.querySelectorAll('.seat:not(.booked)').forEach(seat => {
-        seat.addEventListener('click', function() {
-            const checkbox = this.previousElementSibling || this.parentElement.querySelector('input');
-            if (checkbox && !checkbox.disabled) {
-                checkbox.checked = !checkbox.checked;
-                updateSelection();
-            }
+    // Add click handler to seat divs - FIXED VERSION
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.seat:not(.booked)').forEach(seat => {
+            seat.addEventListener('click', function(e) {
+                e.preventDefault();
+                // Find the checkbox within the same label
+                const label = this.parentElement;
+                const checkbox = label.querySelector('input[type="checkbox"]');
+                
+                if (checkbox && !checkbox.disabled) {
+                    checkbox.checked = !checkbox.checked;
+                    updateSelection();
+                }
+            });
         });
     });
 </script>

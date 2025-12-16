@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Q
 from django.utils import timezone
@@ -8,8 +9,15 @@ from datetime import datetime, timedelta
 import random
 import string
 
+# UPDATED IMPORT - Add CancellationRequest
+from .models import Movie, Cinema, Screen, Showtime, Seat, Booking, SeatBooking, Payment, CancellationRequest
+from .forms import SignUpForm, LoginForm
+
 def generate_booking_reference():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+
+def generate_transaction_id():
+    return 'TXN' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
 
 def home(request):
     now_showing = Movie.objects.filter(is_now_showing=True)[:6]
@@ -150,21 +158,21 @@ def select_seats(request, showtime_id):
             messages.error(request, 'Please select at least one seat!')
             return redirect('select_seats', showtime_id=showtime_id)
         
-        # Create booking
+        # Create booking with Pending status
         total_amount = len(selected_seat_ids) * float(showtime.price)
         booking = Booking.objects.create(
             user=request.user,
             showtime=showtime,
             total_amount=total_amount,
-            status='Confirmed',
+            status='Pending',  # Changed to Pending
             booking_reference=generate_booking_reference()
         )
         
-        # Book the seats
+        # Add seats to booking
         selected_seats = Seat.objects.filter(id__in=selected_seat_ids)
         booking.seats.set(selected_seats)
         
-        # Mark seats as booked
+        # Temporarily reserve seats
         for seat_id in selected_seat_ids:
             SeatBooking.objects.update_or_create(
                 showtime=showtime,
@@ -172,8 +180,8 @@ def select_seats(request, showtime_id):
                 defaults={'is_booked': True, 'booking': booking}
             )
         
-        messages.success(request, 'Booking confirmed!')
-        return redirect('booking_confirmation', booking_id=booking.id)
+        # Redirect to payment page
+        return redirect('payment_page', booking_id=booking.id)
     
     context = {
         'showtime': showtime,
@@ -184,11 +192,85 @@ def select_seats(request, showtime_id):
     return render(request, 'booking/select_seats.html', context)
 
 @login_required
-def booking_confirmation(request, booking_id):
+def payment_page(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id, user=request.user)
+    
+    # Check if booking is already confirmed
+    if booking.status == 'Confirmed':
+        return redirect('booking_confirmation', booking_id=booking.id)
     
     context = {
         'booking': booking,
+    }
+    return render(request, 'booking/payment.html', context)
+
+@login_required
+def process_payment(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id, user=request.user)
+    
+    if request.method == 'POST':
+        payment_method = request.POST.get('payment_method')
+        
+        # Validate payment method
+        if payment_method not in ['card', 'esewa', 'khalti', 'fonepay']:
+            messages.error(request, 'Invalid payment method!')
+            return redirect('payment_page', booking_id=booking.id)
+        
+        # Process payment based on method
+        if payment_method == 'card':
+            card_number = request.POST.get('card_number')
+            cardholder_name = request.POST.get('cardholder_name')
+            expiry = request.POST.get('expiry')
+            cvv = request.POST.get('cvv')
+            
+            # Basic validation
+            if not all([card_number, cardholder_name, expiry, cvv]):
+                messages.error(request, 'Please fill in all card details!')
+                return redirect('payment_page', booking_id=booking.id)
+            
+            # Create payment record
+            payment = Payment.objects.create(
+                booking=booking,
+                payment_method=payment_method,
+                amount=booking.total_amount,
+                transaction_id=generate_transaction_id(),
+                status='completed',
+                card_number=card_number[-4:],
+                cardholder_name=cardholder_name
+            )
+        else:
+            # For digital wallets
+            payment = Payment.objects.create(
+                booking=booking,
+                payment_method=payment_method,
+                amount=booking.total_amount,
+                transaction_id=generate_transaction_id(),
+                status='completed'
+            )
+        
+        # Update booking status to Confirmed
+        booking.status = 'Confirmed'
+        booking.save()
+        
+        messages.success(request, 'Payment successful! Your booking is confirmed.')
+        return redirect('booking_confirmation', booking_id=booking.id)
+    
+    return redirect('payment_page', booking_id=booking.id)
+
+@login_required
+def booking_confirmation(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id, user=request.user)
+    
+    # Get payment details if exists
+    payment = None
+    try:
+        payment = booking.payment
+    except Payment.DoesNotExist:
+        pass
+    
+    context = {
+        'booking': booking,
+        'payment': payment,
     }
     return render(request, 'booking/booking_confirmation.html', context)
 
@@ -200,3 +282,54 @@ def my_bookings(request):
         'bookings': bookings,
     }
     return render(request, 'booking/my_bookings.html', context)
+
+# ============================================
+# NEW CANCELLATION VIEWS
+# ============================================
+
+@login_required
+def request_cancellation(request, booking_id):
+    """Display the cancellation request form"""
+    booking = get_object_or_404(Booking, id=booking_id, user=request.user)
+    
+    # Check if can request cancellation
+    if not booking.can_request_cancellation():
+        messages.error(request, 'This booking cannot be cancelled or already has a pending cancellation request.')
+        return redirect('my_bookings')
+    
+    context = {
+        'booking': booking,
+    }
+    return render(request, 'booking/request_cancellation.html', context)
+
+@login_required
+def cancel_booking(request, booking_id):
+    """Process the cancellation request"""
+    booking = get_object_or_404(Booking, id=booking_id, user=request.user)
+    
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '').strip()
+        
+        if not reason:
+            messages.error(request, 'Please provide a reason for cancellation.')
+            return redirect('request_cancellation', booking_id=booking.id)
+        
+        if len(reason) < 10:
+            messages.error(request, 'Reason must be at least 10 characters long.')
+            return redirect('request_cancellation', booking_id=booking.id)
+        
+        # Check if can request cancellation
+        if not booking.can_request_cancellation():
+            messages.error(request, 'This booking cannot be cancelled.')
+            return redirect('my_bookings')
+        
+        # Create cancellation request
+        CancellationRequest.objects.create(
+            booking=booking,
+            reason=reason
+        )
+        
+        messages.success(request, 'Cancellation request submitted successfully! Our admin will review it shortly.')
+        return redirect('my_bookings')
+    
+    return redirect('request_cancellation', booking_id=booking.id)

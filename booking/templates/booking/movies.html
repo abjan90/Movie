@@ -15,19 +15,29 @@
                     <!-- Genres Filter -->
                     <h6>Genres</h6>
                     <ul class="list-unstyled">
-                        <li><a href="{% url 'home' %}" class="text-decoration-none {% if not request.GET.genre %}fw-bold text-primary{% endif %}">All Movies</a></li>
-                        <li><a href="{% url 'movies' %}" class="text-decoration-none">View All Movies</a></li>
+                        <li><a href="{% url 'movies' %}" class="text-decoration-none {% if not request.GET.genre %}fw-bold text-primary{% endif %}">All Movies</a></li>
+                        {% for genre in genres %}
+                            <li class="mb-1">
+                                <a href="?genre={{ genre }}" class="text-decoration-none {% if request.GET.genre == genre %}fw-bold text-primary{% endif %}">
+                                    {{ genre }}
+                                </a>
+                            </li>
+                        {% empty %}
+                            <li class="text-muted small">No genres available</li>
+                        {% endfor %}
                     </ul>
                     
                     <!-- Sort By -->
                     <hr>
                     <h6>Sort By</h6>
                     <form method="GET" action="">
+                        {% if request.GET.search %}<input type="hidden" name="search" value="{{ request.GET.search }}">{% endif %}
+                        {% if request.GET.genre %}<input type="hidden" name="genre" value="{{ request.GET.genre }}">{% endif %}
                         <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="newest">Newest First</option>
-                            <option value="rating">Highest Rated</option>
-                            <option value="title">Title A-Z</option>
-                            <option value="popular">Most Popular</option>
+                            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                            <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Highest Rated</option>
+                            <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Title A-Z</option>
+                            <option value="popular" {% if sort_by == 'popular' %}selected{% endif %}>Most Popular</option>
                         </select>
                     </form>
                 </div>
@@ -38,14 +48,22 @@
         <div class="col-md-9">
             <!-- Page Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Now Showing</h2>
-                <span class="text-muted">{{ now_showing|length }} movies found</span>
+                <h2>
+                    {% if request.GET.search %}
+                        Search Results for "{{ request.GET.search }}"
+                    {% elif request.GET.genre %}
+                        {{ request.GET.genre }} Movies
+                    {% else %}
+                        Now Showing
+                    {% endif %}
+                </h2>
+                <span class="text-muted">{{ movies|length }} movies found</span>
             </div>
 
             <!-- Movies Grid -->
-            {% if now_showing %}
+            {% if movies %}
                 <div class="row">
-                    {% for movie in now_showing %}
+                    {% for movie in movies %}
                         <div class="col-lg-4 col-md-6 mb-4">
                             <div class="card movie-card h-100 shadow-sm" onclick="window.location.href='{% url 'movie_detail' movie.id %}'">
                                 <div class="position-relative">
@@ -98,8 +116,9 @@
             {% else %}
                 <div class="text-center py-5">
                     <i class="fas fa-film fa-3x text-muted mb-3"></i>
-                    <h4>No Movies Available</h4>
-                    <p class="text-muted">Check back soon for new releases!</p>
+                    <h4>No Movies Found</h4>
+                    <p class="text-muted">Try adjusting your search criteria or browse all movies.</p>
+                    <a href="{% url 'movies' %}" class="btn btn-primary">View All Movies</a>
                 </div>
             {% endif %}
         </div>

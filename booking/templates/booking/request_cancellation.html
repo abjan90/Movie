@@ -1,0 +1,142 @@
+{% extends 'booking/base.html' %}
+
+{% block title %}Cancel Booking - ASA Cinemas{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Booking Details -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Cancel Booking</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i> <strong>Important:</strong> Your cancellation request will be reviewed by our admin team. 
+                        Once approved, the refund will be processed within 5-7 business days.
+                    </div>
+                    
+                    <h6 class="mb-3">Booking Details</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Movie:</strong> {{ booking.showtime.movie.title }}</p>
+                            <p><strong>Cinema:</strong> {{ booking.showtime.screen.cinema.name }}</p>
+                            <p><strong>Screen:</strong> {{ booking.showtime.screen.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Date & Time:</strong> {{ booking.showtime.start_time|date:"F d, Y - H:i" }}</p>
+                            <p><strong>Seats:</strong> 
+                                {% for seat in booking.seats.all %}
+                                    {{ seat.row }}{{ seat.number }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                            <p><strong>Reference:</strong> {{ booking.booking_reference }}</p>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <strong>Refund Amount:</strong> Rs. {{ booking.total_amount }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cancellation Form -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-edit"></i> Cancellation Reason</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'cancel_booking' booking.id %}" id="cancellationForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="reason" class="form-label">
+                                Please tell us why you want to cancel this booking <span class="text-danger">*</span>
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="reason" 
+                                name="reason" 
+                                rows="5" 
+                                required
+                                minlength="10"
+                                placeholder="Please provide a detailed reason for cancellation (minimum 10 characters)..."></textarea>
+                            <div class="form-text">
+                                <span id="charCount">0</span> / 500 characters (minimum 10 required)
+                            </div>
+                        </div>
+
+                        <div class="alert alert-secondary">
+                            <h6><i class="fas fa-clipboard-list"></i> Cancellation Policy</h6>
+                            <ul class="mb-0 small">
+                                <li>Cancellation requests must be submitted at least 2 hours before showtime</li>
+                                <li>Admin approval is required for all cancellations</li>
+                                <li>Refunds will be processed to the original payment method</li>
+                                <li>Processing time: 5-7 business days</li>
+                                <li>Cancellation charges may apply based on timing</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-danger btn-lg" id="submitBtn">
+                                <i class="fas fa-ban"></i> Submit Cancellation Request
+                            </button>
+                            <a href="{% url 'my_bookings' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to My Bookings
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const reasonTextarea = document.getElementById('reason');
+    const charCount = document.getElementById('charCount');
+    const submitBtn = document.getElementById('submitBtn');
+    const form = document.getElementById('cancellationForm');
+    
+    // Character counter
+    reasonTextarea.addEventListener('input', function() {
+        const length = this.value.length;
+        charCount.textContent = length;
+        
+        if (length < 10) {
+            charCount.style.color = 'red';
+            submitBtn.disabled = true;
+        } else {
+            charCount.style.color = 'green';
+            submitBtn.disabled = false;
+        }
+    });
+    
+    // Confirmation before submit
+    form.addEventListener('submit', function(e) {
+        if (!confirm('Are you sure you want to cancel this booking? This action requires admin approval.')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+
+<style>
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.alert-info {
+    border-left-color: #0dcaf0;
+}
+
+.alert-secondary {
+    border-left-color: #6c757d;
+}
+</style>
+{% endblock %}

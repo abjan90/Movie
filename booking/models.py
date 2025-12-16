@@ -81,7 +81,7 @@ class Booking(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings')
     showtime = models.ForeignKey(Showtime, on_delete=models.CASCADE, related_name='bookings')
-    seats = models.ManyToManyField(Seat, related_name='bookings')
+    seats = models.ManyToManyField(Seat)
     booking_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=8, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
@@ -89,8 +89,81 @@ class Booking(models.Model):
     
     def __str__(self):
         return f"{self.booking_reference} - {self.user.username}"
+    
+    def can_request_cancellation(self):
+        """Check if booking can be cancelled"""
+        if self.status == 'Cancelled':
+            return False
+        # Check if there's already a pending cancellation request
+        try:
+            if self.cancellation_request.status == 'Pending':
+                return False
+        except:
+            pass
+        return True
+
+class Payment(models.Model):
+    PAYMENT_METHOD_CHOICES = [
+        ('card', 'Credit/Debit Card'),
+        ('esewa', 'eSewa'),
+        ('khalti', 'Khalti'),
+        ('fonepay', 'FonePay'),
+    ]
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+    
+    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='payment')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    transaction_id = models.CharField(max_length=100, unique=True)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    
+    # Card payment fields (optional)
+    card_number = models.CharField(max_length=4, blank=True, null=True)
+    cardholder_name = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Refund fields
+    refund_date = models.DateTimeField(null=True, blank=True)
+    refund_amount = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    
+    def __str__(self):
+        return f"Payment {self.transaction_id} - {self.booking.booking_reference}"
+
+class CancellationRequest(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+    
+    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='cancellation_request')
+    reason = models.TextField(help_text="Reason for cancellation")
+    request_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    
+    # Admin response
+    admin_response = models.TextField(blank=True, null=True, help_text="Admin's response/notes")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_cancellations')
+    review_date = models.DateTimeField(null=True, blank=True)
+    
+    # Refund details
+    refund_amount = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    refund_processed = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-request_date']
+    
+    def __str__(self):
+        return f"Cancellation Request - {self.booking.booking_reference} ({self.status})"
 
 class SeatBooking(models.Model):
+    """Tracks which seats are booked for each showtime"""
     showtime = models.ForeignKey(Showtime, on_delete=models.CASCADE)
     seat = models.ForeignKey(Seat, on_delete=models.CASCADE)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, null=True, blank=True)

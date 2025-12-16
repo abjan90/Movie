@@ -1,6 +1,6 @@
 {% extends 'booking/base.html' %}
 
-{% block title %}Sign In - QFX Cinemas{% endblock %}
+{% block title %}Sign In - ASA Cinemas{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -36,6 +36,12 @@
         font-weight: 600;
         border-bottom: 3px solid transparent;
         transition: all 0.3s;
+        text-decoration: none;
+        display: block;
+    }
+    
+    .auth-tab:hover {
+        color: #00bcd4;
     }
     
     .auth-tab.active {
@@ -85,6 +91,7 @@
         transform: translateY(-50%);
         cursor: pointer;
         color: #b0b3b8;
+        user-select: none;
     }
     
     .btn-auth {
@@ -92,6 +99,16 @@
         padding: 1rem;
         font-size: 1.1rem;
         margin-top: 1rem;
+        background: #0d6efd;
+        border: none;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .btn-auth:hover {
+        background: #0b5ed7;
     }
     
     .auth-links {
@@ -115,6 +132,23 @@
         color: #f44336;
         font-size: 0.9rem;
         margin-top: 0.5rem;
+        padding: 0;
+    }
+    
+    .alert-message {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border-radius: 5px;
+    }
+    
+    .alert-error {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .alert-success {
+        background: #27ae60;
+        color: white;
     }
 </style>
 {% endblock %}
@@ -124,44 +158,53 @@
     <div class="auth-box">
         <div class="auth-tabs">
             <div class="auth-tab active">SIGN IN</div>
-            <div class="auth-tab" data-href="{% url 'signup' %}">SIGN UP</div>
+            <a href="{% url 'signup' %}" class="auth-tab">SIGN UP</a>
         </div>
         
-        <form method="post">
+        <!-- Display Messages -->
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert-message alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        
+        <form method="POST" action="{% url 'login' %}">
             {% csrf_token %}
             
             <div class="form-group">
-                <label>Email</label>
-                {{ form.email }}
-                {% if form.email.errors %}
-                    <ul class="errorlist">
-                        {% for error in form.email.errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
+                <label for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username"
+                    name="username" 
+                    class="form-control" 
+                    placeholder="Enter your username" 
+                    required
+                    value="{{ request.POST.username|default:'' }}"
+                    autocomplete="username">
             </div>
             
             <div class="form-group">
-                <label>Password</label>
+                <label for="password">Password</label>
                 <div class="password-field">
-                    {{ form.password }}
-                    <span class="password-toggle" onclick="togglePassword(this)">👁️</span>
+                    <input 
+                        type="password" 
+                        id="passwordField"
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Enter your password" 
+                        required
+                        autocomplete="current-password">
+                    <span class="password-toggle" onclick="togglePassword(event)">👁️</span>
                 </div>
-                {% if form.password.errors %}
-                    <ul class="errorlist">
-                        {% for error in form.password.errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
             </div>
             
-            <button type="submit" class="btn btn-primary btn-auth">Sign In</button>
+            <button type="submit" class="btn-auth">Sign In</button>
             
             <div class="auth-links">
                 <a href="#">Forgot Password?</a>
-                <a href="#">Login via OTP</a>
             </div>
         </form>
     </div>
@@ -170,8 +213,13 @@
 
 {% block extra_js %}
 <script>
-    function togglePassword(icon) {
-        const input = icon.previousElementSibling;
+    function togglePassword(event) {
+        event.preventDefault(); // Prevent any form submission
+        event.stopPropagation(); // Stop event bubbling
+        
+        const input = document.getElementById('passwordField');
+        const icon = event.target;
+        
         if (input.type === 'password') {
             input.type = 'text';
             icon.textContent = '👁️‍🗨️';
@@ -179,6 +227,8 @@
             input.type = 'password';
             icon.textContent = '👁️';
         }
+        
+        return false;
     }
 </script>
 {% endblock %}
