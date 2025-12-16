@@ -4,6 +4,11 @@
 
 {% block extra_css %}
 <style>
+    body {
+        background: #0f1419;
+        color: #fff;
+    }
+    
     .seats-container {
         max-width: 1000px;
         margin: 2rem auto;
@@ -63,8 +68,8 @@
     }
     
     .seat {
-        width: 35px;
-        height: 35px;
+        width: 45px;
+        height: 45px;
         background: #2c3138;
         border-radius: 5px 5px 0 0;
         cursor: pointer;
@@ -72,26 +77,37 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         border: 2px solid transparent;
         color: #b0b3b8;
+        user-select: none;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
     }
     
     .seat:hover:not(.booked) {
         background: #3a3f47;
         transform: scale(1.1);
+        border-color: #00bcd4;
     }
     
     .seat.selected {
-        background: #00bcd4;
-        border-color: #00e5ff;
-        color: #fff;
+        background: #00bcd4 !important;
+        border-color: #00e5ff !important;
+        color: #fff !important;
+        transform: scale(1.05);
     }
     
     .seat.booked {
-        background: #f44336;
-        cursor: not-allowed;
-        color: #fff;
+        background: #f44336 !important;
+        cursor: not-allowed !important;
+        color: #fff !important;
+    }
+    
+    .seat.booked:hover {
+        transform: none !important;
+        border-color: transparent !important;
     }
     
     .legend {
@@ -118,14 +134,17 @@
     }
     
     .booking-summary {
-        position: sticky;
+        position: fixed;
         bottom: 0;
+        left: 0;
+        right: 0;
         background: #1a1f26;
         padding: 1.5rem;
         border-top: 2px solid #00bcd4;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        z-index: 1000;
     }
     
     .summary-info {
@@ -171,23 +190,19 @@
             <div class="seat-row">
                 <span class="row-label">{{ row.grouper }}</span>
                 {% for seat in row.list %}
-                <label class="seat-label">
-                    <input type="checkbox" 
-                           name="seats" 
-                           value="{{ seat.id }}" 
-                           class="seat-checkbox"
-                           style="display: none;" 
-                           {% if seat.id in booked_seats %}disabled{% endif %}>
-                    <div class="seat {% if seat.id in booked_seats %}booked{% endif %}" 
-                         data-seat-id="{{ seat.id }}"
-                         data-price="{{ showtime.price }}">
-                        {{ seat.number }}
-                    </div>
-                </label>
+                <div class="seat {% if seat.id in booked_seats %}booked{% endif %}" 
+                     data-seat-id="{{ seat.id }}"
+                     data-price="{{ showtime.price }}"
+                     onclick="handleSeatClick(event, {{ seat.id }}, {% if seat.id in booked_seats %}true{% else %}false{% endif %})">
+                    {{ seat.number }}
+                </div>
                 {% endfor %}
             </div>
             {% endfor %}
         </div>
+        
+        <!-- Hidden checkboxes for form submission -->
+        <div id="hiddenCheckboxes"></div>
         
         <div class="legend">
             <div class="legend-item">
@@ -217,65 +232,96 @@
             <div class="summary-value">Rs. <span id="totalAmount">0.00</span></div>
         </div>
     </div>
-    <button type="button" class="btn btn-primary" onclick="confirmBooking()" 
+    <button type="button" class="btn btn-primary btn-lg" onclick="confirmBooking()" 
             style="font-size: 1.1rem; padding: 1rem 3rem;">
         Proceed to Pay
     </button>
 </div>
 
 <script>
-    function updateSelection() {
-        const checkboxes = document.querySelectorAll('input[name="seats"]:checked');
+    // Store selected seats
+    let selectedSeats = new Set();
+    const price = parseFloat('{{ showtime.price }}');
+    
+    console.log('Seat selection initialized. Price per seat:', price);
+    
+    function handleSeatClick(event, seatId, isBooked) {
+        console.log('===== SEAT CLICK DETECTED =====');
+        console.log('Seat ID:', seatId);
+        console.log('Is Booked:', isBooked);
+        console.log('Event:', event);
         
-        // Update seat styling - remove all selected first
-        document.querySelectorAll('.seat').forEach(seat => {
-            seat.classList.remove('selected');
-        });
+        event.preventDefault();
+        event.stopPropagation();
         
-        // Add selected class to checked seats
-        checkboxes.forEach(checkbox => {
-            const seatDiv = checkbox.nextElementSibling;
-            if (seatDiv) {
-                seatDiv.classList.add('selected');
-            }
-        });
+        // Don't allow selecting booked seats
+        if (isBooked) {
+            console.log('❌ Seat is BOOKED, cannot select');
+            alert('This seat is already booked!');
+            return;
+        }
         
-        // Update summary
-        const count = checkboxes.length;
-        const price = parseFloat('{{ showtime.price }}');
+        const seatDiv = event.currentTarget;
+        console.log('Seat element:', seatDiv);
+        
+        if (selectedSeats.has(seatId)) {
+            // Deselect
+            console.log('🔄 DESELECTING seat:', seatId);
+            selectedSeats.delete(seatId);
+            seatDiv.classList.remove('selected');
+        } else {
+            // Select
+            console.log('✅ SELECTING seat:', seatId);
+            selectedSeats.add(seatId);
+            seatDiv.classList.add('selected');
+        }
+        
+        console.log('Currently selected seats:', Array.from(selectedSeats));
+        
+        updateSummary();
+        updateHiddenCheckboxes();
+    }
+    
+    function updateSummary() {
+        const count = selectedSeats.size;
         const total = count * price;
+        
+        console.log('Updating summary - Count:', count, 'Total:', total);
         
         document.getElementById('seatCount').textContent = count;
         document.getElementById('totalAmount').textContent = total.toFixed(2);
     }
     
-    function confirmBooking() {
-        const form = document.getElementById('seatForm');
-        const checkboxes = form.querySelectorAll('input[name="seats"]:checked');
+    function updateHiddenCheckboxes() {
+        const container = document.getElementById('hiddenCheckboxes');
+        container.innerHTML = '';
         
-        if (checkboxes.length === 0) {
+        selectedSeats.forEach(seatId => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'seats';
+            input.value = seatId;
+            container.appendChild(input);
+        });
+        
+        console.log('Hidden checkboxes updated:', Array.from(selectedSeats));
+    }
+    
+    function confirmBooking() {
+        if (selectedSeats.size === 0) {
             alert('Please select at least one seat!');
             return;
         }
         
-        form.submit();
+        console.log('Submitting booking with seats:', Array.from(selectedSeats));
+        document.getElementById('seatForm').submit();
     }
     
-    // Add click handler to seat divs - FIXED VERSION
+    // Test click functionality on page load
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.seat:not(.booked)').forEach(seat => {
-            seat.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Find the checkbox within the same label
-                const label = this.parentElement;
-                const checkbox = label.querySelector('input[type="checkbox"]');
-                
-                if (checkbox && !checkbox.disabled) {
-                    checkbox.checked = !checkbox.checked;
-                    updateSelection();
-                }
-            });
-        });
+        console.log('Page loaded. Total seats:', document.querySelectorAll('.seat').length);
+        console.log('Available seats:', document.querySelectorAll('.seat:not(.booked)').length);
+        console.log('Booked seats:', document.querySelectorAll('.seat.booked').length);
     });
 </script>
 {% endblock %}

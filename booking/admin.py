@@ -88,23 +88,36 @@ class CancellationRequestAdmin(admin.ModelAdmin):
             booking.status = 'Cancelled'
             booking.save()
             
-            # CRITICAL: Release ALL seats for this booking
-            # Get the seat IDs from the booking
-            booked_seat_ids = list(booking.seats.values_list('id', flat=True))
+            # FIXED: Release seats - use booking reference directly
+            # Delete or set is_booked to False for all SeatBooking entries related to this booking
+            seat_bookings = SeatBooking.objects.filter(booking=booking)
             
-            # Release seats in SeatBooking table
-            released = SeatBooking.objects.filter(
-                showtime=booking.showtime,
-                seat_id__in=booked_seat_ids,
-                booking=booking
-            ).update(is_booked=False, booking=None)
+            print(f"[ADMIN ACTION] Found {seat_bookings.count()} seat bookings for {booking.booking_reference}")
+            
+            # Method 1: Set is_booked to False and clear the booking reference
+            released = seat_bookings.update(is_booked=False, booking=None)
+            
+            # Alternative Method 2: Delete the SeatBooking entries entirely (uncomment if preferred)
+            # released = seat_bookings.count()
+            # seat_bookings.delete()
             
             total_seats_released += released
             
             # Debug output
             print(f"[ADMIN ACTION] Approved cancellation for booking: {booking.booking_reference}")
             print(f"[ADMIN ACTION] Released {released} seats for showtime: {booking.showtime}")
-            print(f"[ADMIN ACTION] Seat IDs released: {booked_seat_ids}")
+            print(f"[ADMIN ACTION] Seat IDs released: {list(booking.seats.values_list('id', flat=True))}")
+            
+            # Verify seats are released
+            remaining_bookings = SeatBooking.objects.filter(
+                showtime=booking.showtime,
+                seat__in=booking.seats.all(),
+                is_booked=True
+            )
+            if remaining_bookings.exists():
+                print(f"[WARNING] Some seats still marked as booked: {list(remaining_bookings.values_list('seat_id', flat=True))}")
+            else:
+                print(f"[SUCCESS] All seats successfully released!")
             
             # Update payment status
             try:
